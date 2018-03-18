@@ -1,5 +1,8 @@
 #!/bin/sh
 
+###
+# usage
+###
 show_help() {
 cat << EOF
 Usage: ${0##*/} -j JOB_NAME -b BUILD_NUMBER -s STATUS -h HOST -p PORT -u USER -P PASSWORD -t TOPIC
@@ -15,19 +18,24 @@ Publish status.
 EOF
 }
 
+###
+# prepare json with status
 # $1 jobName
 # $2 buildNumber
 # $3 status
+###
 prepare_status() {
     echo '{
-    jobName: "$1",
-    buildNumber: $2,
-    status: "$3",
+    jobName: "'$1'",
+    buildNumber: '$2',
+    status: "'$3'",
+    timestamp: "'$(date --iso-8601=seconds)'",
 }'
 }
 
-mosquitto_pub -h io.adafruit.com -p 1883 -u jczas -P 329f2bd3369c4e52908564eaf7e887b8 -t jczas/feeds/jenkins -m "test"
-
+###
+# parse parameters
+###
 job_name=""
 build_number=""
 status=""
@@ -37,7 +45,7 @@ user=""
 password=""
 topic=""
 
-while getopts jbshpuPt: opt; do
+while getopts j:b:s:h:p:u:P:t: opt; do
     case $opt in
         j)
             job_name=$OPTARG
@@ -70,6 +78,20 @@ while getopts jbshpuPt: opt; do
     esac
 done
 
+if [ -z "$job_name" ] || [ -z "$build_number" ] || [ -z "$status" ] || [ -z "$host" ] || [ -z "$port" ]
+then
+    show_help >&2
+    exit 1
+fi
+if [ -z "$user" ] || [ -z "$password" ] || [ -z "$topic" ]
+then
+    show_help >&2
+    exit 1
+fi
+
+###
+# main
+###
 json=$(prepare_status "$job_name" "$build_number" "$status")
 
 echo "Prepared json: $json"
